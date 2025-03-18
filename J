@@ -1,0 +1,132 @@
+import pygame
+import random
+
+# 初始化 pygame
+pygame.init()
+
+# 设置屏幕大小
+WIDTH, HEIGHT = 600, 400
+CELL_SIZE = 20
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("进化贪吃蛇")
+
+# 颜色定义
+WHITE = (255, 255, 255)
+GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+BLUE = (0, 0, 255)
+BLACK = (0, 0, 0)
+
+# 初始化贪吃蛇
+snake = [(100, 100), (80, 100), (60, 100)]
+snake_dir = (CELL_SIZE, 0)  # 初始向右移动
+speed = 10  # 初始速度
+can_pass_walls = False  # 是否可以穿墙
+
+# 初始化食物
+food = (random.randrange(0, WIDTH, CELL_SIZE), random.randrange(0, HEIGHT, CELL_SIZE))
+special_food = None  # 特殊食物
+
+# 初始化敌人蛇
+enemy_snake = [(300, 200), (320, 200), (340, 200)]
+enemy_dir = (-CELL_SIZE, 0)  # 初始向左移动
+
+# 运行游戏
+clock = pygame.time.Clock()
+running = True
+
+while running:
+    screen.fill(BLACK)
+    
+    # 处理事件
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP and snake_dir != (0, CELL_SIZE):
+                snake_dir = (0, -CELL_SIZE)
+            elif event.key == pygame.K_DOWN and snake_dir != (0, -CELL_SIZE):
+                snake_dir = (0, CELL_SIZE)
+            elif event.key == pygame.K_LEFT and snake_dir != (CELL_SIZE, 0):
+                snake_dir = (-CELL_SIZE, 0)
+            elif event.key == pygame.K_RIGHT and snake_dir != (-CELL_SIZE, 0):
+                snake_dir = (CELL_SIZE, 0)
+
+    # 移动贪吃蛇
+    new_head = (snake[0][0] + snake_dir[0], snake[0][1] + snake_dir[1])
+
+    # 撞墙检测
+    if not can_pass_walls:
+        if new_head[0] < 0 or new_head[0] >= WIDTH or new_head[1] < 0 or new_head[1] >= HEIGHT or new_head in snake:
+            running = False  # 游戏结束
+    else:
+        # 穿墙逻辑
+        new_head = (new_head[0] % WIDTH, new_head[1] % HEIGHT)
+
+    snake.insert(0, new_head)
+
+    # 吃食物检测
+    if new_head == food:
+        food = (random.randrange(0, WIDTH, CELL_SIZE), random.randrange(0, HEIGHT, CELL_SIZE))
+        
+        # 进化机制
+        evolution = random.choice(["speed_up", "grow", "pass_walls"])
+        if evolution == "speed_up":
+            speed += 2
+        elif evolution == "grow":
+            snake.append(snake[-1])  # 额外增加一节
+        elif evolution == "pass_walls":
+            can_pass_walls = True  # 允许穿墙
+        
+        # 随机生成特殊食物
+        if random.random() < 0.3:  
+            special_food = (random.randrange(0, WIDTH, CELL_SIZE), random.randrange(0, HEIGHT, CELL_SIZE))
+    else:
+        snake.pop()  # 保持长度
+
+    # 吃特殊食物
+    if special_food and new_head == special_food:
+        special_food = None
+        can_pass_walls = False  # 失去穿墙能力
+        speed = 10  # 恢复原速
+
+    # 敌人AI追踪
+    enemy_target = snake[0]
+    enemy_head = enemy_snake[0]
+    if enemy_head[0] < enemy_target[0]:
+        enemy_dir = (CELL_SIZE, 0)
+    elif enemy_head[0] > enemy_target[0]:
+        enemy_dir = (-CELL_SIZE, 0)
+    elif enemy_head[1] < enemy_target[1]:
+        enemy_dir = (0, CELL_SIZE)
+    elif enemy_head[1] > enemy_target[1]:
+        enemy_dir = (0, -CELL_SIZE)
+
+    # 移动敌人蛇
+    new_enemy_head = (enemy_head[0] + enemy_dir[0], enemy_head[1] + enemy_dir[1])
+    enemy_snake.insert(0, new_enemy_head)
+    enemy_snake.pop()
+
+    # 敌人碰撞检测
+    if new_enemy_head in snake:
+        running = False  # 玩家被敌人吃掉，游戏结束
+
+    # 绘制贪吃蛇
+    for segment in snake:
+        pygame.draw.rect(screen, GREEN, pygame.Rect(segment[0], segment[1], CELL_SIZE, CELL_SIZE))
+
+    # 绘制食物
+    pygame.draw.rect(screen, RED, pygame.Rect(food[0], food[1], CELL_SIZE, CELL_SIZE))
+
+    # 绘制特殊食物
+    if special_food:
+        pygame.draw.rect(screen, BLUE, pygame.Rect(special_food[0], special_food[1], CELL_SIZE, CELL_SIZE))
+
+    # 绘制敌人蛇
+    for segment in enemy_snake:
+        pygame.draw.rect(screen, WHITE, pygame.Rect(segment[0], segment[1], CELL_SIZE, CELL_SIZE))
+
+    pygame.display.flip()
+    clock.tick(speed)  # 控制游戏速度
+
+pygame.quit()
